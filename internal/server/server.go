@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
-	"io"
 	"net"
 	"sync/atomic"
 )
@@ -21,35 +19,18 @@ type HandlerError struct {
 	StatusCode response.StatusCode
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request) 
 
 func (s *Server) handle(conn net.Conn) {
+	defer conn.Close()
+
 	req, err := request.RequestFromReader(conn)
-	
+
 	if err != nil {
 		return
 	}
 
-	buffer := bytes.Buffer{}
-
-	handlerError := s.handler(&buffer, req)
-
-	if handlerError != nil {
-		b := []byte(handlerError.Message)
-		headers := response.GetDefaultHeaders(len(b))
-		response.WriteStatusLine(conn, handlerError.StatusCode)
-		response.WriteHeaders(conn, headers)
-		conn.Write(b)
-		conn.Close()
-	} else {
-		headers := response.GetDefaultHeaders(buffer.Len())
-		response.WriteStatusLine(conn, response.Ok)
-		response.WriteHeaders(conn, headers)
-		conn.Write(buffer.Bytes())
-		conn.Close()
-	}
-
-	
+	s.handler(&response.Writer{Writer:conn }, req)
 
 }
 

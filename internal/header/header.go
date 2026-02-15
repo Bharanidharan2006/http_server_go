@@ -3,6 +3,7 @@ package header
 import (
 	"bytes"
 	"errors"
+	"regexp"
 	"strings"
 )
 
@@ -12,24 +13,26 @@ func NewHeaders() Headers {
 	return Headers{}
 }
 
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
-	index := bytes.Index(data, []byte("\r\n"))
+func (h Headers) Get(key string) string {
+	return h.Get(key)
+}
 
-	if index == -1 {
-		return 0, false, nil
-	}
-
-	read := 0
-
-	headerLines := bytes.Split(data, []byte("\r\n"))
+func (h *Headers) Parse(data []byte) (int, bool, error) {
 	
-	for i := 0; i < len(headerLines) - 1 ; i++ {
-		element := headerLines[i]
-		length := len(element)
-		line := string(element)
-		if line == "" {
-			return read, done, nil 
+	read := 0
+	
+	for {
+		index := bytes.Index(data, []byte("\r\n"))
+		if index == -1 {
+			return read, false, nil
 		}
+
+		if index == 0 {
+			return read + len([]byte("\r\n")), true, nil
+		}
+		
+		line := string(data[:index])
+		read += index + len([]byte("\r\n"))
 
 		parts := strings.SplitN(line, ":", 2)
 
@@ -40,11 +43,26 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 			return 0, false, errors.New("Header is not in the correct format")
 		}
 
-		read += (length + len([]byte("\r\n")))
+		matched, _ := regexp.MatchString("^[a-zA-Z0-9!#$%&+-.*'^_`~|]+$", parts[0])
+		
+		if !matched {
+			return 0, false, errors.New("Header is not in the correct Format. Use of invalid characters in the header")
+		}
+		
+		parts[0] = strings.ToLower(parts[0])
 
-		h[parts[0]] = parts[1]
+		val , ok := (*h)[parts[0]]
+
+		if ok {
+			newVal := val + ", " + parts[1]
+			(*h)[parts[0]] = newVal
+		} else {
+			(*h)[parts[0]] = parts[1]
+		}
+
+		offset := index + len([]byte("\r\n"))
+
+		copy(data, data[offset:])
 		
 	}
-
-	return read, false, nil
 }

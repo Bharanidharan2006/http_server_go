@@ -35,11 +35,19 @@ func main(){
 
 		req, err := request.RequestFromReader(conn)
 
+		fmt.Println(req)
+
 		if err != nil {
 			fmt.Println(err.Error())
 		}
 
-		fmt.Printf("Request Line:\n\t-Method: %s\n\t-Request Target: %s\n\t-Http Version: %s", req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion)
+		fmt.Printf("Request Line:\n\t-Method: %s\n\t-Request Target: %s\n\t-Http Version: %s\n", req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion)
+		fmt.Printf("Headers:\n")
+		for k, v := range req.Headers {
+			fmt.Printf("\t-%s: %s\n", k, v)
+		}
+		fmt.Printf("Body:\n")
+		fmt.Printf("\t-%s\n", string(req.Body))
 	}
 }
 
@@ -52,7 +60,7 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 		defer close(lineChan)
 		var currline string 
 		for {
-		b := make([]byte, 8, 8)
+		b := make([]byte, 8)
 		n, err := f.Read(b)
 
 		if err != nil {
